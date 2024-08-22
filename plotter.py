@@ -2,17 +2,21 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpat
 import numpy as np
 from numpy.polynomial.polynomial import Polynomial, polyval
+from math import sqrt, ceil, floor
 
 class Plot():
     def __init__(self, xLabel=None, yLabel=None, title=None, **kwargs):
-        plt.figure(**kwargs)
+        self.figure = plt.figure(**kwargs)
+        if title:
+            plt.suptitle(title)
         if xLabel:
             plt.xlabel(xLabel)
         if yLabel:
             plt.ylabel(yLabel)
-        if title:
-            plt.title(title)
+        self.xLabel = xLabel
+        self.yLabel = yLabel
         self.legendArgs = []
+
 
     def scatter(self, *graphs, lineOfBestFit=False, deg=1, normaliseDates=False):
         graphs = list(graphs)
@@ -27,7 +31,7 @@ class Plot():
                 if "datetime" in str(y.dtype):
                     raise Exception("INVALID OPERATION: Cannot plot line of best fit using datetime object as y variable, only valid for x variable.")
                 normalisedX = x if "datetime" not in str(x.dtype) else x.astype(np.float64)
-                coeffs = Polynomial.fit(normalisedX, y, deg).convert().coef
+                coeffs = Polynomial.fit(normalisedX, y, deg=deg).convert().coef
                 lOBF = plt.plot(x, polyval(normalisedX, coeffs))
                 self.__addToLegend(lOBF, f"{label} LOBF")
         self.__showLegent()
@@ -44,15 +48,16 @@ class Plot():
         self.__showLegent()
         plt.show()
 
-    def hist(self, vals, measure="density", bins=None, binMode='balanced', order=None):
+    def hist(self, *vals, subPlotTitles=[], measure="density", bins=None, binMode='balanced', order=None):
+        subPlotTitles = subPlotTitles[::-1]
+        binFunc = None
         if measure not in ["density", "den", "d", "frequency", "freq", "f"]:
             raise Exception("Uknown measure: measure can either be 'frequency' or 'density' - Check documentation for details.")
-        if str(vals.dtype) != 'object':
-            self.__removeNaNValues()
+        if str(vals[0][0].dtype) != 'object':
             if binMode in ['balanced', 'bal', 'b']:
-                bins = (len(vals)//(bins or 10)) or 1
+                binFunc = lambda v:(len(v)//(bins or 10)) or 1
             elif binMode in ['interval', 'int', 'i']:
-                bins = round((max(vals) - min(vals))/(bins or 1)) or 1
+                binFunc = lambda v:round((max(v) - min(v))/(bins or 1)) or 1
             elif binMode not in ['number', 'num', 'n']:
                 raise Exception("Uknown binMode: binMode can be either 'balanced', 'interval' or 'number' - Check documentation for details.")
         else:
@@ -61,10 +66,22 @@ class Plot():
             toIDict = {val:i for i, val in enumerate(order)}
             vals = np.asarray([toIDict[val] for val in vals if isinstance(val, str)], dtype=int)
             plt.xticks(np.arange(0, len(order)), [str(val) for val in order])
-            bins = np.arange(len(order) + 1) - 0.5
-        plt.ylabel("Frequency" + " Density"*(measure in "density"))
-        weights = [1/len(vals) if measure == "density" else 1]*len(vals)
-        plt.hist(vals, weights=weights, bins=(bins if bins is not None else 20))
+            binFunc = lambda v:np.arange(len(order) + 1) - 0.5
+
+        for axis in self.figure.get_axes():
+            axis.set_visible(False)
+        self.yLabel = "Frequency" + " Density"*(measure in "density")
+        self.figure.text(0.05, 0.5, self.yLabel, va='center', rotation='vertical')
+        self.figure.text(0.5, 0.05, self.xLabel, ha='center')
+        rows = floor(sqrt(len(vals)))
+        columns = ceil(len(vals)/rows)
+        subAxs = self.figure.subplots(rows, columns, sharey=True, squeeze=False)
+        for i in range(rows):
+            for j in range(columns):
+                cVals = vals[j*rows + i]
+                weights = [1/len(cVals) if measure == "density" else 1]*len(cVals)
+                subAxs[i][j].hist(cVals, weights=weights, bins=(binFunc(cVals) if binFunc is not None else 20))
+                subAxs[i][j].set_title(subPlotTitles.pop() if subPlotTitles else "")
         plt.show()
 
     def boxPlot(self, *varsArr, tickInterval=None, tickOffset=0):
@@ -96,6 +113,8 @@ class Plot():
         plt.gca().legend(handles=self.legendArgs, loc="best", draggable=True)
 
     def __removeNaNValues(self, *args):
+        if not args:
+            return []
         nanRemovalArray = np.isnan(args[0])
         for var in args[1:]:
             nanRemovalArray |= np.isnan(var)

@@ -2,6 +2,7 @@ from .sheets import *
 from .columns import *
 import pandas as pd
 import numpy as np
+from statistics import stdev
 
 def quartiles(arr):
     sArr = sorted(arr)
@@ -31,7 +32,7 @@ class LargeDataSet():
 
     def __init__(self, sheets=None, columns=None):
         if sheets is None:
-            sheets = [x for x in range(1,16)]
+            sheets = [x for x in range(1,17)]
         elif isinstance(sheets, (tuple, list)):
             sheets = [x + 1 for x in sorted(sheets)]
         elif isinstance(sheets, int):
@@ -66,12 +67,17 @@ class LargeDataSet():
             sheetI -= 1
             self.sheets[sheetI] = Sheet(dataFrame, SHEET_NAMES[sheetI], overseasColumns)
 
+    def __len__(self):
+        return len([s for s in self.sheets if s is not None])
+
     def statistics(self, *sheets):
         if not len(sheets):
             sheets = (i for i, sheet in enumerate(self.sheets) if sheet is not None)
         return {self.sheets[i].getName():self.sheets[i].statistics() for i in sheets}
 
     def __getitem__(self, *args):
+        while not (len(args) != 1 or isinstance(args[0], int)): 
+            args = args[0]
         return self.sheets[args[0]] if len(args) == 1 else [self.sheets[arg] for arg in args if self.sheets[arg] is not None]
 
     def __str__(self):
@@ -105,7 +111,7 @@ class Sheet():
     def statistics(self, *columns):
         if not len(columns):
             columns = sorted(self.data.keys())
-        return {COLUMN_NAMES[i]:(({"mean":np.mean(columnData)
+        return {COLUMN_NAMES[i]:(({"mean":np.mean(columnData), "standard deviation":stdev(columnData),
                                 } | {var:val for var, val in zip(
                                     ["lower bound", "lower quartile", "median", "upper quartile", "upper bound"], 
                                     quartiles(columnData))}) 
