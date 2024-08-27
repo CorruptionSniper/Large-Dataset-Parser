@@ -49,11 +49,13 @@ class Plot():
         plt.show()
 
     def hist(self, *vals, subPlotTitles=[], measure="density", bins=None, binMode='balanced', order=None):
+        vals = list(vals)
         subPlotTitles = subPlotTitles[::-1]
         binFunc = None
+        xTicks = None
         if measure not in ["density", "den", "d", "frequency", "freq", "f"]:
             raise Exception("Uknown measure: measure can either be 'frequency' or 'density' - Check documentation for details.")
-        if str(vals[0][0].dtype) != 'object':
+        if str(vals[0].dtype) != 'object':
             if binMode in ['balanced', 'bal', 'b']:
                 binFunc = lambda v:(len(v)//(bins or 10)) or 1
             elif binMode in ['interval', 'int', 'i']:
@@ -64,16 +66,17 @@ class Plot():
             if order is None:
                 raise Exception("Missing argument: order must be provided for histograms of non-numerical data.")
             toIDict = {val:i for i, val in enumerate(order)}
-            vals = np.asarray([toIDict[val] for val in vals if isinstance(val, str)], dtype=int)
-            plt.xticks(np.arange(0, len(order)), [str(val) for val in order])
             binFunc = lambda v:np.arange(len(order) + 1) - 0.5
+            xTicks = np.arange(0, len(order)), [str(val) for val in order]
+            for i, arr in enumerate(vals):
+                vals[i] = np.asarray([toIDict[val] for val in arr if val in toIDict], dtype=int)
 
         for axis in self.figure.get_axes():
             axis.set_visible(False)
         self.yLabel = "Frequency" + " Density"*(measure in "density")
         self.figure.text(0.05, 0.5, self.yLabel, va='center', rotation='vertical')
         self.figure.text(0.5, 0.05, self.xLabel, ha='center')
-        rows = floor(sqrt(len(vals)))
+        rows = floor(sqrt(len(vals))) or 1
         columns = ceil(len(vals)/rows)
         subAxs = self.figure.subplots(rows, columns, sharey=True, squeeze=False)
         for i in range(rows):
@@ -82,6 +85,8 @@ class Plot():
                 weights = [1/len(cVals) if measure == "density" else 1]*len(cVals)
                 subAxs[i][j].hist(cVals, weights=weights, bins=(binFunc(cVals) if binFunc is not None else 20))
                 subAxs[i][j].set_title(subPlotTitles.pop() if subPlotTitles else "")
+                if xTicks:
+                    subAxs[i][j].set_xticks(*xTicks)
         plt.show()
 
     def boxPlot(self, *varsArr, tickInterval=None, tickOffset=0):

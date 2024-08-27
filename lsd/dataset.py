@@ -42,8 +42,9 @@ class LargeDataSet():
         i = 0
         for i, sheet in enumerate(sheets):
             if sheet >= BEIJING_1987:
+                i -= 1
                 break
-        ukSheets, overseasSheets = sheets[:i], sheets[i:]
+        ukSheets, overseasSheets = sheets[:i + 1], sheets[i + 1:]
         converters = {2 if columns is None else len([x for x in columns[:3] if x in [0,1]]):
                       lambda x:x if x != "tr" else 0.025} if columns is None or 2 in columns else None
         overseasColumns = [self.OVERSEAS_COLUMN_INDEX_DICT[column] 
@@ -126,7 +127,7 @@ class Sheet():
         return str(self)
 
     def __str__(self):
-        return str(self.data)
+        return f"Sheet({str(self.data)}"
     
     def __iter__(self):
         return (column for column in self.data.values())

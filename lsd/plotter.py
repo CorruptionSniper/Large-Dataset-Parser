@@ -26,11 +26,11 @@ class Plot():
 
     def hist(self, x, title=None):
         p = pt.Plot(COLUMN_NAMES[x], title=self.TITLE_FUNC(title) or SHEET_NAMES[self.sheets[0]])
-        p.hist(*[sheet[x] for sheet in LargeDataSet(self.sheets, columns=x)[self.sheets]], 
+        p.hist(*[data for data in LargeDataSet(self.sheets, columns=x)[*self.sheets]], 
                subPlotTitles=[SHEET_NAMES[sheet] for sheet in self.sheets],
-               order=BEAUFORT_SCALE if x == MEAN_WIND_SPEED_BC 
+               order=(BEAUFORT_SCALE if x == MEAN_WIND_SPEED_BC
             else (CARDINAL_DIRECTIONS if MEAN_WIND_CARDINAL_DIRECTION or MAX_GUST_CARDINAL_DIRECTION 
-            else None))
+            else None)))
 
     def boxPlot(self, x, tickInterval=None, tickOffset=0, title=None):
         p = pt.Plot(COLUMN_NAMES[x], "Location", title or "")
