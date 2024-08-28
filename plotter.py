@@ -48,7 +48,7 @@ class Plot():
         self.__showLegent()
         plt.show()
 
-    def hist(self, *vals, subPlotTitles=[], measure="density", bins=None, binMode='balanced', order=None):
+    def hist(self, *vals, subPlotTitles=[], measure="density", bins=None, binMode="balanced", order=None):
         vals = list(vals)
         subPlotTitles = subPlotTitles[::-1]
         binFunc = None

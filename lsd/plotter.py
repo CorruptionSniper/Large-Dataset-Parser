@@ -24,14 +24,16 @@ class Plot():
                       for sheetI, sheet 
                       in zip(self.sheets, LargeDataSet(self.sheets, columns=[x,y]))], normaliseDates=(len(self.sheets) > 1))
 
-    def hist(self, x, title=None):
+    def hist(self, x, title=None, binMode="balanced", bins=None):
         p = pt.Plot(COLUMN_NAMES[x], title=self.TITLE_FUNC(title) or SHEET_NAMES[self.sheets[0]])
-        p.hist(*[data for data in LargeDataSet(self.sheets, columns=x)[*self.sheets]], 
+        ds = LargeDataSet(self.sheets, columns=x)
+        p.hist(*[ds[sheet][x] for sheet in self.sheets], 
                subPlotTitles=[SHEET_NAMES[sheet] for sheet in self.sheets],
                order=(BEAUFORT_SCALE if x == MEAN_WIND_SPEED_BC
             else (CARDINAL_DIRECTIONS if MEAN_WIND_CARDINAL_DIRECTION or MAX_GUST_CARDINAL_DIRECTION 
-            else None)))
+            else None)), binMode=binMode, bins=bins)
 
     def boxPlot(self, x, tickInterval=None, tickOffset=0, title=None):
         p = pt.Plot(COLUMN_NAMES[x], "Location", title or "")
-        p.boxPlot(*[[sheet.getName(), sheet[x]] for sheet in LargeDataSet(self.sheets, columns=x)], tickInterval=tickInterval, tickOffset=tickOffset)
+        ds = LargeDataSet(self.sheets, columns=x)
+        p.boxPlot(*[[sheet.getName(), sheet[x]] for sheet in (ds[sheet] for sheet in self.sheets)], tickInterval=tickInterval, tickOffset=tickOffset)
