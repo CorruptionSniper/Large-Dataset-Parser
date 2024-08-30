@@ -24,7 +24,7 @@ class Plot():
                 for i, lxy in enumerate(graphs):
                     graphs[i][1] = self.__normaliseDateArray(lxy[1])
         for label, x, y in graphs:
-            x, y = self.__removeNaNValues(x, y)
+            x, y = self.__removeInvalidValues(x, y)
             g = plt.plot(x, y, '.')
             self.__addToLegend(g, label)
             if lineOfBestFit:
@@ -49,19 +49,20 @@ class Plot():
         plt.show()
 
     def hist(self, *vals, subPlotTitles=[], measure="density", bins=None, binMode="balanced", order=None):
+        measure = measure.lower()
         vals = list(vals)
         subPlotTitles = subPlotTitles[::-1]
         binFunc = None
         xTicks = None
         if measure not in ["density", "den", "d", "frequency", "freq", "f"]:
-            raise Exception("Uknown measure: measure can either be 'frequency' or 'density' - Check documentation for details.")
+            raise Exception(f"Uknown measure '{measure}': measure can either be 'frequency' or 'density' - Check documentation for details.")
         if str(vals[0].dtype) != 'object':
             if binMode in ['balanced', 'bal', 'b']:
                 binFunc = lambda v:(len(v)//(bins or 10)) or 1
             elif binMode in ['interval', 'int', 'i']:
                 binFunc = lambda v:round((max(v) - min(v))/(bins or 1)) or 1
             elif binMode not in ['number', 'num', 'n']:
-                raise Exception("Uknown binMode: binMode can be either 'balanced', 'interval' or 'number' - Check documentation for details.")
+                raise Exception(f"Uknown binMode '{binMode}': binMode can be either 'balanced', 'interval' or 'number' - Check documentation for details.")
         else:
             if order is None:
                 raise Exception("Missing argument: order must be provided for histograms of non-numerical data.")
@@ -89,12 +90,12 @@ class Plot():
                     subAxs[i][j].set_xticks(*xTicks)
         plt.show()
 
-    def boxPlot(self, *varsArr, tickInterval=None, tickOffset=0):
+    def boxPlot(self, *varsArr, tickInterval=None, tickOffset=0, removalCondition=None):
         varsArr = list(varsArr)[::-1]
         for i, var in enumerate(varsArr):
             if str(var[1].dtype) in ['datetime64[ns]', 'object']:
                 raise Exception(f"INVALID DATA TYPE: {str(var[1].dtype)} - Cannot boxplot an array of non-numeric data types.")
-            varsArr[i][1] = self.__removeNaNValues(var[1])
+            varsArr[i][1] = self.__removeInvalidValues(var[1], condition=removalCondition)
         plt.boxplot([vals for label, vals in varsArr], vert=False)
         if tickInterval:
             l, h = min([min(vals) for label, vals in varsArr]), max([max(vals) for label, vals in varsArr])
@@ -117,11 +118,13 @@ class Plot():
     def __showLegent(self):
         plt.gca().legend(handles=self.legendArgs, loc="best", draggable=True)
 
-    def __removeNaNValues(self, *args):
+    def __removeInvalidValues(self, *args, condition=None):
         if not args:
             return []
-        nanRemovalArray = np.isnan(args[0])
+        invalidValueRemovalArray = np.isnan(args[0])
         for var in args[1:]:
-            nanRemovalArray |= np.isnan(var)
-        nanRemovalArray = ~nanRemovalArray
-        return args[0][nanRemovalArray] if len(args) == 1 else [var[nanRemovalArray] for var in args]
+            invalidValueRemovalArray |= np.isnan(var)
+        if condition is not None:
+            invalidValueRemovalArray |= [condition(*[arg[i] for arg in args]) for i in range(len(args[0]))]
+        invalidValueRemovalArray = ~invalidValueRemovalArray
+        return args[0][invalidValueRemovalArray] if len(args) == 1 else [var[invalidValueRemovalArray] for var in args]
